@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import DayCell from './DayCell';
 
-
-
 const Calendar: React.FC = () => {
   const [tasks, setTasks] = useState<{ [key: string]: string[] }>({});
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [view, setView] = useState<'week' | 'month'>('month'); 
 
   useEffect(() => {
     const savedTasks = localStorage.getItem('tasks');
@@ -26,11 +25,8 @@ const Calendar: React.FC = () => {
     const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
     const daysInMonth = lastDayOfMonth.getDate();
 
-    const firstDayIndex = (firstDayOfMonth.getDay() + 6) % 7; 
-
+    const firstDayIndex = (firstDayOfMonth.getDay() + 6) % 7; // Перенос тижня з понеділка
     const emptyDays = Array.from({ length: firstDayIndex }, () => null);
-
-    
     const days = Array.from({ length: daysInMonth }, (_, i) => {
       const day = new Date(date.getFullYear(), date.getMonth(), i + 1);
       return day;
@@ -39,9 +35,27 @@ const Calendar: React.FC = () => {
     return [...emptyDays, ...days];
   };
 
+  const getWeekDays = (date: Date) => {
+    const startOfWeek = new Date(date);
+    const dayIndex = (startOfWeek.getDay() + 6) % 7; // Зсув на понеділок
+    startOfWeek.setDate(startOfWeek.getDate() - dayIndex);
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(startOfWeek);
+      day.setDate(day.getDate() + i);
+      return day;
+    });
+  };
+
   const handleSwitchDate = (direction: 'next' | 'prev') => {
     const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1));
+
+    if (view === 'month') {
+      newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1));
+    } else {
+      newDate.setDate(currentDate.getDate() + (direction === 'next' ? 7 : -7));
+    }
+
     setCurrentDate(newDate);
   };
 
@@ -63,17 +77,33 @@ const Calendar: React.FC = () => {
   const monthName = currentDate.toLocaleString('default', { month: 'long' });
   const year = currentDate.getFullYear();
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const daysToDisplay = getMonthDaysWithPadding(currentDate);
+
+  const daysToDisplay =
+    view === 'month' ? getMonthDaysWithPadding(currentDate) : getWeekDays(currentDate);
 
   return (
     <Wrapper>
       <Container>
         <Header>
           <div>
-            <button onClick={handleSwitchDate.bind(null, 'prev')}>&uarr;</button>
-            <button onClick={handleSwitchDate.bind(null, 'next')}>&darr;</button>
+            <button onClick={handleSwitchDate.bind(null, 'prev')}>☝️</button>
+            <button onClick={handleSwitchDate.bind(null, 'next')}>👇</button>
           </div>
           <MonthYear>{`${monthName} ${year}`}</MonthYear>
+          <ViewSwitch>
+            <button
+              className={view === 'month' ? 'active' : ''}
+              onClick={() => setView('month')}
+            >
+              Month
+            </button>
+            <button
+              className={view === 'week' ? 'active' : ''}
+              onClick={() => setView('week')}
+            >
+              Week
+            </button>
+          </ViewSwitch>
         </Header>
 
         <DayNames>
@@ -87,10 +117,8 @@ const Calendar: React.FC = () => {
             if (!day) {
               return <div key={`empty-${index}`} />; // Порожня комірка
             }
-
             const dayStr = day.toISOString().split('T')[0];
             const isToday = day.toDateString() === new Date().toDateString();
-
             return (
               <DayCell
                 key={dayStr}
@@ -105,7 +133,6 @@ const Calendar: React.FC = () => {
         </CalendarGrid>
       </Container>
     </Wrapper>
-    
   );
 };
 
@@ -123,9 +150,9 @@ const Container = styled.div`
 
 const CalendarGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(7, 1fr); /* 7 стовпців для днів тижня */
+  grid-template-columns: repeat(7, 1fr);
   gap: 8px;
-  padding: 16px;
+  padding: 16px 0;
 `;
 
 const Header = styled.div`
@@ -146,4 +173,27 @@ const DayNames = styled.div`
   gap: 8px;
   text-align: center;
   margin-bottom: 8px;
+`;
+
+const ViewSwitch = styled.div`
+  display: flex;
+  gap: 8px;
+
+  button {
+    padding: 8px 16px;
+    border: none;
+    background: rgb(199, 199, 199);
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgb(139, 140, 141);
+    }
+
+    &.active {
+      background: rgb(154, 203, 255);
+      font-weight: bold;
+    }
+  }
 `;
